@@ -49,7 +49,7 @@ void resolve(int handler) {
   FILE *file = fopen(filename, "r");
   printf("%s\n",filename);
   while(fgets(buf, BUF_SIZE, file)) {
-    write(handler, buf, strlen(buf), 0);
+    write(handler, buf, strlen(buf));
     memset(buf, 0, BUF_SIZE);
   }
 }
