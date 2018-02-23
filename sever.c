@@ -86,13 +86,13 @@ int main(int argc, char** argv) {
     for (;;) {
         int client_fd = accept(sockfd,
         (struct sockaddr *) &client_addr, &addr_size);
-        // if (client_fd > 0) {
-        //     int n = read(client_fd, buffer, 2048);
-        //     printf("%s", buffer);
-        //     fflush(stdout);
-        //     n = write(client_fd, data, strlen(data));
-        //     close(client_fd); 
-        // }
+        if (client_fd > 0) {
+            int n = read(client_fd, buffer, 2048);
+            printf("%s", buffer);
+            fflush(stdout);
+            n = write(client_fd, data, strlen(data));
+            close(client_fd); 
+        }
         printf("wow\n");
         if (client_fd < 0) {
         perror("[main:82:accept]");
