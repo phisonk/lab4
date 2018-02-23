@@ -8,7 +8,26 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <unistd.h>
+#include <netinet/tcp.h>
+#include <sys/signal.h>
+
+#define check(expr) if (!(expr)) { perror(#expr); kill(0, SIGTERM); }
 #define BUF_SIZE 100
+
+void enable_keepalive(int sock) {
+    int yes = 1;
+    check(setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &yes, sizeof(int)) != -1);
+
+    int idle = 1;
+    check(setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(int)) != -1);
+
+    int interval = 1;
+    check(setsockopt(sock, IPPROTO_TCP, TCP_KEEPINTVL, &interval, sizeof(int)) != -1);
+
+    int maxpkt = 10;
+    check(setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT, &maxpkt, sizeof(int)) != -1);
+}
+
 
 void header(int handler, int status) {
   char header[1000] = {0};
@@ -48,9 +67,12 @@ void resolve(int handler) {
 
   FILE *file = fopen(filename, "r");
   printf("%s\n",filename);
-  while(fgets(buf, BUF_SIZE, file)) {
-    write(handler, buf, strlen(buf));
-    memset(buf, 0, BUF_SIZE);
+  char headers[] = "HTTP/1.0 200 OK\r\nServer: CPi\r\nContent-type: video/mp4\r\n\r\n";
+  char data0[BUF_SIZE+2048] = {0};
+  snprintf(data0, sizeof data0,"%s %s", headers, buf);
+  while(fgets(data0, 2148, file)) {
+    send(handler, data0, strlen(data0),0);
+    memset(data0, 0, 2148);
   }
 }
 
@@ -70,7 +92,7 @@ int main(int argc, char** argv) {
  
     struct sockaddr_storage client_addr;
     socklen_t addr_size = sizeof client_addr;
-    char headers[] = "HTTP/1.0 200 OK\r\nServer: CPi\r\nContent-type: text/html\r\n\r\n";
+    //char headers[] = "HTTP/1.0 200 OK\r\nServer: CPi\r\nContent-type: text/html\r\n\r\n";
     char buffer[2048];
     char html[] = "<html><head><title>Temperature</title></head><body>{\"humidity\":81%,\"airtemperature\":23.5C}</p></body></html>\r\n";
     // FILE* fp = fopen("index.html", "r");
@@ -81,18 +103,19 @@ int main(int argc, char** argv) {
  
     // fclose(fp);
     char data[2048] = {0};
-    snprintf(data, sizeof data,"%s %s", headers, html);
+    //snprintf(data, sizeof data,"%s %s", headers, html);
     printf("GG\n");
     for (;;) {
         int client_fd = accept(sockfd,
         (struct sockaddr *) &client_addr, &addr_size);
-        if (client_fd > 0) {
-            int n = read(client_fd, buffer, 2048);
-            printf("%s", buffer);
-            fflush(stdout);
-            n = write(client_fd, data, strlen(data));
-            close(client_fd); 
-        }
+        enable_keepalive(client_fd);
+        // if (client_fd > 0) {
+        //     int n = read(client_fd, buffer, 2048);
+        //     printf("%s", buffer);
+        //     fflush(stdout);
+        //     n = write(client_fd, data, strlen(data));
+        //     close(client_fd); 
+        // }
         printf("wow\n");
         if (client_fd < 0) {
         perror("[main:82:accept]");
